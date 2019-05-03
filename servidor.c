@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,20 +14,35 @@
 #define MAX_CONN 100     //Nº máximo de conexiones en espera
 #define MAX_TAM_MENSAJE 512 //Numero de caracteres maximo del mensaje
 
+int puerto_id, coneccion_id;
+
+/**********************************************************/
+/* función catch que captura una interrupción             */
+/**********************************************************/
+void catch(int sig)
+{
+	printf("***Señal: %d atrapada!\n", sig);
+  printf("***Cerrando servicio ...\n");
+  close(coneccion_id);
+  close(puerto_id);
+  printf("***Servicio cerrado.\n");
+  exit(EXIT_SUCCESS);
+}
+
+
 /**********************************************************/
 /* función MAIN                                           */
 /* Orden Parametros: Puerto                               */
 /**********************************************************/
 
 int main(int argc, char *argv[]) {
-  int puerto_id, coneccion_id;
   socklen_t destino_tam;
   struct sockaddr_in origen_dir, destino_dir;
   char mensaje_entrada[MAX_TAM_MENSAJE], mensaje_salida[MAX_TAM_MENSAJE];
 
   if (argc != 2) {
-    printf("\n\n\aEl número de parámetros es incorrecto\n");
-    printf("\aUse: %s <puerto>\n\n",argv[0]);
+    printf("\n\nEl número de parámetros es incorrecto\n");
+    printf("Use: %s <puerto>\n\n",argv[0]);
     exit(EXIT_FAILURE);
   }
 
@@ -55,9 +71,10 @@ int main(int argc, char *argv[]) {
     close(puerto_id);
     exit(EXIT_FAILURE);
   }
-  printf("\n\aServidor ACTIVO escuchando en el puerto: %s ...\n",argv[1]);
 
+  signal(SIGINT, &catch);
   while(1){
+    printf("\n***Servidor ACTIVO escuchando en el puerto: %s ...\n",argv[1]);
     //Establece una conexión
     destino_tam=sizeof(destino_dir);
     coneccion_id = accept(puerto_id, (struct sockaddr*)&destino_dir, &destino_tam);
@@ -66,7 +83,7 @@ int main(int argc, char *argv[]) {
       close(puerto_id);
       exit(EXIT_FAILURE);
     }
-
+    printf("***Servidor se conecto con el cliente: %d.\n",destino_dir.sin_addr.s_addr);
     do {
       //Recibe el mensaje del cliente
       if (recv(coneccion_id, mensaje_entrada, sizeof(mensaje_entrada), 0) == -1) {
@@ -75,25 +92,27 @@ int main(int argc, char *argv[]) {
         close(puerto_id);
         exit(EXIT_SUCCESS);
       } else
-			   printf("\nLlego esto: %s\n", mensaje_entrada);
+			   printf("<<Client envía >>: %s\n", mensaje_entrada);
 
       //Envia el mensaje al cliente
-		  sprintf(mensaje_salida, "\nEl servidor contesta que llego el mesaje enviado %s\n",mensaje_entrada);
+		  sprintf(mensaje_salida, "El mensaje recibido fue --- %s ---.",mensaje_entrada);
 		  if (send(coneccion_id, strcat(mensaje_salida,"\0"), strlen(mensaje_salida)+1, 0) == -1) {
         perror("Error en send");
         close(coneccion_id);
         close(puerto_id);
         exit(EXIT_SUCCESS);
       } else
-        printf("\nServidor le respondio al clientet esto: %s\n", mensaje_salida);
+        printf("<<Server replica>>: %s\n", mensaje_salida);
     }while(strcmp(mensaje_entrada,"terminar();") != 0);
 
     //Cierra la conexión con el cliente actual
-    printf("Cerrando conección con cliente\n");
+    printf("***Cerrando conección con cliente ...\n");
     close(coneccion_id);
+    printf("***Conección cerrada.\n");
   }
   //Cierra el servidor
-  printf("Cerrando servicio\n");
+  printf("***Cerrando servicio ...\n");
   close(puerto_id);
+  printf("***Servicio cerrado.\n");
   exit(EXIT_SUCCESS);
 }

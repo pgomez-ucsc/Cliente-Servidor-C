@@ -4,12 +4,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 #define MAX_TAM_MENSAJE 512 //Numero de caracteres maximo del mensaje
+
+char mensaje[MAX_TAM_MENSAJE];
+
+/**********************************************************/
+/* función catch que captura una interrupción             */
+/**********************************************************/
+void catch(int sig)
+{
+	strcpy(mensaje,"terminar();");
+}
 
 /**********************************************************/
 /* función MAIN                                           */
@@ -18,11 +29,11 @@
 int main(int argc, char *argv[]) {
 	int puerto_id;
 	struct sockaddr_in origen_dir, destino_dir;
-	char respuesta[MAX_TAM_MENSAJE], mensaje[MAX_TAM_MENSAJE];
+	char respuesta[MAX_TAM_MENSAJE];//, mensaje[MAX_TAM_MENSAJE];
 
  	if (argc != 3) {
-    printf("\n\n\aEl número de parámetros es incorrecto\n");
-    printf("\aUse: %s <IP servidor> <puerto>\n\n",argv[0]);
+    printf("\n\nEl número de parámetros es incorrecto\n");
+    printf("Use: %s <IP_servidor> <puerto>\n\n",argv[0]);
     exit(EXIT_FAILURE);
   }
 
@@ -51,25 +62,25 @@ int main(int argc, char *argv[]) {
 	destino_dir.sin_port = htons(atoi(argv[2]));
 
 	//Establece la conexión con la máquina remota
-  printf("Estableciendo conección con el servidor %s en el puerto %s ....\n",argv[1],argv[2]);
+  printf("***Estableciendo conección con servidor %s en puerto %s ....\n",argv[1],argv[2]);
 	if( connect(puerto_id, (struct sockaddr*)&destino_dir, sizeof(destino_dir)) == -1) {
     printf("ERROR en la solicitud de conección del cliente al servidor\n");
     close(puerto_id);
     exit(EXIT_FAILURE);
   } else {
-    printf("Conección establecida ... \n");
+    printf("***Conección establecida. \n");
   }
-
+  signal(SIGINT, &catch);
   do {
     //Envía el mensaje
-    printf("Clnt:>> ");
+    printf("<<Client>>: ");
     scanf("%s",mensaje);
     if(send(puerto_id,mensaje, strlen(mensaje)+1, 0) == -1) {
       printf("ERROR al enviar el mensaje del cliente al servidor\n");
       close(puerto_id);
       exit(EXIT_FAILURE);
     } else {
-      printf("Cliente envía: %s a: %s en el puerto: %s \n",mensaje, argv[1], argv[2]);
+      printf("***Cliente envía: %s a: %s en puerto: %s \n",mensaje, argv[1], argv[2]);
     }
 
 	  //Recibe la respuesta
@@ -78,19 +89,19 @@ int main(int argc, char *argv[]) {
       close(puerto_id);
       exit(EXIT_FAILURE);
     } else {
-      printf("Servidor responde: %s", respuesta);
+      printf("<<Server>>: %s\n", respuesta);
     }
 
     //Se cierra la conexión (socket)
     if(strcmp(mensaje,"terminar();") == 0) {
-      printf("Cliente terminó la conección con el servidor.\n");
+      printf("***Cliente terminó conección con servidor.\n");
       close(puerto_id);
       exit(EXIT_FAILURE);
     }
 
   } while(1);
 	//Se cierra la conexión (socket)
-  printf("\n Cliente termina conección \n");
+  printf("\nCliente termina.\n");
 	close(puerto_id);
   exit(EXIT_SUCCESS);
 }
