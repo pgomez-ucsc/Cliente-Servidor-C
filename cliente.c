@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
 	//Establece la conexión con la máquina remota
   printf("Estableciendo conección con el servidor %s en el puerto %s ....\n",argv[1],argv[2]);
-	if( connect(puerto_id, (struct sockaddr*)&destino_dir, sizeof(destino_dir) == -1)) {
+	if( connect(puerto_id, (struct sockaddr*)&destino_dir, sizeof(destino_dir)) == -1) {
     printf("ERROR en la solicitud de conección del cliente al servidor\n");
     close(puerto_id);
     exit(EXIT_FAILURE);
@@ -60,22 +60,16 @@ int main(int argc, char *argv[]) {
     printf("Conección establecida ... \n");
   }
 
-
   do {
     //Envía el mensaje
-    gets(mensaje);
-	  if(strcmp(mensaje,"terminar();") != 0) {
-      printf("Cliente terminó la conección con el servidor.\n");
+    printf("Clnt:>> ");
+    scanf("%s",mensaje);
+    if(send(puerto_id,mensaje, strlen(mensaje)+1, 0) == -1) {
+      printf("ERROR al enviar el mensaje del cliente al servidor\n");
       close(puerto_id);
       exit(EXIT_FAILURE);
     } else {
-      if(send(puerto_id,mensaje, strlen(mensaje)+1, 0) == -1) {
-        printf("ERROR al enviar el mensaje del cliente al servidor\n");
-        close(puerto_id);
-        exit(EXIT_FAILURE);
-      } else {
-        printf("\n\n->Cliente envía: %s, a: %s en el puerto: %s \n",mensaje, argv[1], argv[2]);
-      }
+      printf("Cliente envía: %s a: %s en el puerto: %s \n",mensaje, argv[1], argv[2]);
     }
 
 	  //Recibe la respuesta
@@ -84,11 +78,19 @@ int main(int argc, char *argv[]) {
       close(puerto_id);
       exit(EXIT_FAILURE);
     } else {
-      printf("Servidor responde: %s\n", respuesta);
+      printf("Servidor responde: %s", respuesta);
     }
-  } while(1);
 
+    //Se cierra la conexión (socket)
+    if(strcmp(mensaje,"terminar();") == 0) {
+      printf("Cliente terminó la conección con el servidor.\n");
+      close(puerto_id);
+      exit(EXIT_FAILURE);
+    }
+
+  } while(1);
 	//Se cierra la conexión (socket)
+  printf("\n Cliente termina conección \n");
 	close(puerto_id);
   exit(EXIT_SUCCESS);
 }
